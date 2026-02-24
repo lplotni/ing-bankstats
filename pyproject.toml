@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ing-bankstats"
+version = "0.1.0"
+description = "Visualise ING Bank Germany transaction exports as interactive HTML reports"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "pandas>=2.0",
+    "plotly>=5.20",
+    "PyYAML>=6.0",
+    "Jinja2>=3.1",
+]
+
+[project.scripts]
+visualise = "ing_bankstats.cli:visualise"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"ing_bankstats" = ["assets/*.j2", "assets/*.yaml"]

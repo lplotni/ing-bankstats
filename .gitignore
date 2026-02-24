@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# CSV data files (sensitive bank exports) — keep only templates
+data/*.csv
+!data/*template*.csv
+
+# Generated reports
+*.html
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/

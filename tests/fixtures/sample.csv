@@ -1,0 +1,17 @@
+Kontonummer;DE12 3456 7890 1234 5678 90 / Girokonto;
+Von;01.01.2025;Bis;28.02.2025;
+Kontoinhaber;Max Mustermann;
+;
+Buchung;Valuta;Auftraggeber/Empfänger;Buchungstext;Verwendungszweck;Saldo;Währung;Betrag;Währung
+05.01.2025;05.01.2025;Arbeitgeber GmbH;Gehalt/Rente;Lohn/Gehalt Januar 2025;2.500,00;EUR;2.500,00;EUR
+10.01.2025;10.01.2025;REWE Markt GmbH;Lastschrift;REWE SAGT DANKE;2.450,00;EUR;-50,00;EUR
+15.01.2025;15.01.2025;Netflix International;Lastschrift;Netflix Abo;2.435,50;EUR;-14,50;EUR
+20.01.2025;20.01.2025;Telekom Deutschland;Lastschrift;Telefonrechnung Januar;2.395,50;EUR;-40,00;EUR
+25.01.2025;25.01.2025;Amazon EU SARL;Lastschrift;Bestellung Nr. 123;2.355,50;EUR;-40,00;EUR
+05.02.2025;05.02.2025;Arbeitgeber GmbH;Gehalt/Rente;Lohn/Gehalt Februar 2025;4.855,50;EUR;2.500,00;EUR
+08.02.2025;08.02.2025;EDEKA Center;Lastschrift;Einkauf Lebensmittel;4.805,50;EUR;-50,00;EUR
+12.02.2025;12.02.2025;Zahnaerzte am Markt;Lastschrift;Zahnarztbehandlung;4.705,50;EUR;-100,00;EUR
+18.02.2025;18.02.2025;Shell Tankstelle;Lastschrift;Tanken;4.665,50;EUR;-40,00;EUR
+22.02.2025;22.02.2025;Unbekannt GmbH;Lastschrift;Diverse Kosten;4.645,50;EUR;-20,00;EUR
+10.01.2025;10.01.2025;Max Mustermann;Umbuchung;Sparen Januar;4.145,50;EUR;-500,00;EUR
+15.02.2025;15.02.2025;Max Mustermann;Umbuchung;Sparen Februar;3.645,50;EUR;-500,00;EUR
