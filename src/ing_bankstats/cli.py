@@ -6,6 +6,7 @@ import webbrowser
 from pathlib import Path
 
 import click
+import pandas as pd
 
 from . import categorizer, parser, report
 
@@ -48,16 +49,25 @@ def visualise(csv_files: tuple[str, ...], output: str | None, config_path: str |
     config = categorizer.load_config(config_path)
 
     # ── Parse CSV(s) ───────────────────────────────────────────────────────
-    import pandas as pd
-
     dfs = []
     for csv_file in csv_files:
         csv_path = Path(csv_file)
         click.echo(f"Parsing {csv_path.name} …")
-        df = parser.parse_csv(str(csv_path))
+        df = parser.parse_csv(csv_path)
         click.echo(f"  {len(df)} transactions")
         dfs.append(df)
     df = pd.concat(dfs, ignore_index=True)
+
+    # ── Deduplicate transactions ───────────────────────────────────────────
+    before = len(df)
+    df = df.drop_duplicates(
+        subset=["date", "merchant", "amount", "reference"],
+        keep="first",
+        ignore_index=True,
+    )
+    dupes = before - len(df)
+    if dupes:
+        click.echo(f"  Removed {dupes} duplicate transaction(s)")
     click.echo(f"  {len(df)} transactions total")
 
     # ── Categorise ─────────────────────────────────────────────────────────

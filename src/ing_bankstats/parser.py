@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 
 
@@ -16,7 +18,7 @@ _COLUMN_RENAMES = {
 }
 
 
-def _find_header_row(file_path: str) -> int:
+def _find_header_row(file_path: str | Path) -> int:
     """Return the zero-based line index of the CSV header row.
 
     ING prepends several account-metadata lines before the actual header.
@@ -32,7 +34,7 @@ def _find_header_row(file_path: str) -> int:
     )
 
 
-def parse_csv(file_path: str) -> pd.DataFrame:
+def parse_csv(file_path: str | Path) -> pd.DataFrame:
     """Read an ING Bank Germany CSV export and return a clean DataFrame.
 
     Handles:

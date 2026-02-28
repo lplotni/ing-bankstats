@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import yaml
 
 
@@ -35,8 +36,6 @@ def categorise(df, config: dict[str, Any]):
     4. For each category apply a vectorised ``str.contains`` regex over the
        combined keywords; skip categories with no keywords.
     """
-    import pandas as pd  # local import keeps module light if only config used
-
     df = df.copy()
     df["search_text"] = (
         df.get("merchant", pd.Series("", index=df.index)).fillna("").str.lower()

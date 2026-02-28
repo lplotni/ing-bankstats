@@ -1,6 +1,7 @@
 """Tests for multi-CSV merge and transfer cancellation."""
 
 import pandas as pd
+import pytest
 
 from ing_bankstats.parser import parse_csv
 
@@ -24,6 +25,3 @@ class TestMultiCsvMerge:
         assert savings_total == pytest.approx(0.0), (
             f"Savings transfers should cancel out across accounts, got {savings_total}"
         )
-
-
-import pytest

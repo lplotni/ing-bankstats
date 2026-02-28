@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bank Statement Analysis</title>
-  <script>{{ plotly_js }}</script>
+  <script>{{ plotly_js|safe }}</script>
   <style>
     :root {
       --bg:      #0f1117;
@@ -168,6 +168,45 @@
       white-space: nowrap;
     }
 
+    /* ── Average category tables ───────────────────────────────────── */
+    .avg-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .avg-section h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .avg-section th.amount,
+    .avg-section td.amount {
+      text-align: right;
+    }
+
+    tr.subtotal td {
+      font-weight: 700;
+      border-top: 2px solid var(--border);
+      border-bottom: 2px solid var(--border);
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .cat-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+
     @media (max-width: 900px) {
       .chart-row { grid-template-columns: 1fr; }
     }
@@ -210,18 +249,74 @@
       <div class="stat-value">{{ stats.avg_monthly_expenses_fmt }}</div>
     </div>
     <div class="stat-card">
+      <div class="stat-label">Avg Monthly Consumption</div>
+      <div class="stat-value red">{{ stats.avg_monthly_consumption_fmt }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Monthly Investment</div>
+      <div class="stat-value">{{ stats.avg_monthly_investment_fmt }}</div>
+    </div>
+    <div class="stat-card">
       <div class="stat-label">Uncategorised</div>
       <div class="stat-value dim">{{ stats.uncategorised_count }}</div>
     </div>
   </div>
 
-  <div class="chart-full">{{ chart_income_expenses }}</div>
-  <div class="chart-full">{{ chart_spending_by_category }}</div>
+  <div class="chart-full">{{ chart_income_expenses|safe }}</div>
+  <div class="chart-full">{{ chart_spending_by_category|safe }}</div>
 
   <div class="chart-row">
-    <div class="chart-half">{{ chart_category_pie }}</div>
-    <div class="chart-half">{{ chart_savings }}</div>
+    <div class="chart-half">{{ chart_category_pie|safe }}</div>
+    <div class="chart-half">{{ chart_savings|safe }}</div>
   </div>
+
+  {% if avg_expense_categories %}
+  <div class="avg-section">
+    <h2>Average Monthly Expenses by Category</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          {% for y in avg_years %}<th class="amount">{{ y }}</th>{% endfor %}
+          <th class="amount">Overall</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in avg_expense_categories %}
+        <tr{% if row.is_subtotal %} class="subtotal"{% endif %}>
+          <td>{% if not row.is_subtotal %}<span class="cat-dot" style="background:{{ row.color }}"></span>{% endif %}{{ row.category }}</td>
+          {% for y in avg_years %}<td class="amount">{{ row[y] }}</td>{% endfor %}
+          <td class="amount" style="font-weight:600">{{ row.overall }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if avg_income_categories and avg_income_categories|length > 1 %}
+  <div class="avg-section">
+    <h2>Average Monthly Income by Category</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          {% for y in avg_years %}<th class="amount">{{ y }}</th>{% endfor %}
+          <th class="amount">Overall</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in avg_income_categories %}
+        <tr>
+          <td><span class="cat-dot" style="background:{{ row.color }}"></span>{{ row.category }}</td>
+          {% for y in avg_years %}<td class="amount">{{ row[y] }}</td>{% endfor %}
+          <td class="amount" style="font-weight:600">{{ row.overall }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 
   {% if other_transactions %}
   <details>

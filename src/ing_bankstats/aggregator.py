@@ -2,7 +2,31 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pandas as pd
+
+
+@dataclass
+class AggregationResult:
+    """All aggregation outputs needed for the report."""
+
+    monthly_summary: pd.DataFrame
+    monthly_by_category: pd.DataFrame
+    category_totals: pd.Series
+    stats: dict
+    avg_expenses: pd.DataFrame
+    avg_income: pd.DataFrame
+
+
+def _category_types(config: dict | None) -> dict[str, str]:
+    """Return a mapping of category name to type ("consumption" or "investment")."""
+    if not config:
+        return {}
+    return {
+        name: cfg.get("type", "consumption")
+        for name, cfg in config.get("categories", {}).items()
+    }
 
 
 def _excluded_categories(config: dict | None) -> set[str]:
@@ -16,10 +40,53 @@ def _excluded_categories(config: dict | None) -> set[str]:
     }
 
 
+def _category_averages(
+    df: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Compute average monthly spend/income per category, overall and per year.
+
+    Returns (avg_expenses, avg_income) DataFrames with columns for each year
+    and an ``overall`` column, indexed by category name, sorted by overall
+    descending.
+    """
+    df = df.copy()
+    df["month"] = df["date"].dt.to_period("M")
+    df["year"] = df["date"].dt.year
+
+    results = []
+    for sign, label in [("neg", "expenses"), ("pos", "income")]:
+        subset = df[df["amount"] < 0] if sign == "neg" else df[df["amount"] > 0]
+        if subset.empty:
+            results.append(pd.DataFrame(columns=["category", "overall"]))
+            continue
+
+        amounts = subset.copy()
+        amounts["abs_amount"] = amounts["amount"].abs()
+
+        # Per-year averages
+        year_totals = amounts.groupby(["year", "category"])["abs_amount"].sum()
+        months_per_year = amounts.groupby("year")["month"].nunique()
+        year_avg = year_totals.div(months_per_year, level="year").unstack(level="year", fill_value=0)
+
+        # Overall averages
+        total_by_cat = amounts.groupby("category")["abs_amount"].sum()
+        total_months = amounts["month"].nunique()
+        overall = total_by_cat / total_months
+
+        result = year_avg.copy()
+        result.columns = [int(c) for c in result.columns]
+        result["overall"] = overall
+        result = result.fillna(0).sort_values("overall", ascending=False)
+        result = result.reset_index()
+        results.append(result)
+
+    return results[0], results[1]
+
+
 def aggregate(
     df: pd.DataFrame,
     config: dict | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, dict]:
+) -> AggregationResult:
     """Compute all aggregations needed for the report.
 
     Parameters
@@ -44,6 +111,10 @@ def aggregate(
         Series mapping each category to its total (positive) expense.
     stats:
         Scalar statistics dict for the summary bar.
+    avg_expenses:
+        Average monthly expenses per category (overall + per year).
+    avg_income:
+        Average monthly income per category (overall + per year).
     """
     excluded = _excluded_categories(config)
 
@@ -115,4 +186,104 @@ def aggregate(
         "excluded_count": excluded_count,
     }
 
-    return monthly_summary, monthly_by_category, category_totals, stats
+    # ── Consumption vs investment split ───────────────────────────────────
+    cat_types = _category_types(config)
+    if not expense_df.empty:
+        expense_cats = expense_df.copy()
+        expense_cats["cat_type"] = expense_cats["category"].map(
+            lambda c: cat_types.get(c, "consumption")
+        )
+        consumption_total = float(abs(expense_cats.loc[expense_cats["cat_type"] == "consumption", "amount"].sum()))
+        investment_total = float(abs(expense_cats.loc[expense_cats["cat_type"] == "investment", "amount"].sum()))
+
+        consumption_monthly = expense_cats[expense_cats["cat_type"] == "consumption"].groupby("month")["amount"].sum().abs()
+        investment_monthly = expense_cats[expense_cats["cat_type"] == "investment"].groupby("month")["amount"].sum().abs()
+        avg_monthly_consumption = float(consumption_monthly.mean()) if not consumption_monthly.empty else 0.0
+        avg_monthly_investment = float(investment_monthly.mean()) if not investment_monthly.empty else 0.0
+    else:
+        consumption_total = 0.0
+        investment_total = 0.0
+        avg_monthly_consumption = 0.0
+        avg_monthly_investment = 0.0
+
+    stats["total_consumption"] = consumption_total
+    stats["total_investment"] = investment_total
+    stats["avg_monthly_consumption"] = avg_monthly_consumption
+    stats["avg_monthly_investment"] = avg_monthly_investment
+
+    # ── Category averages (per year + overall) ────────────────────────────
+    avg_expenses, avg_income = _category_averages(df)
+
+    return AggregationResult(
+        monthly_summary=monthly_summary,
+        monthly_by_category=monthly_by_category,
+        category_totals=category_totals,
+        stats=stats,
+        avg_expenses=avg_expenses,
+        avg_income=avg_income,
+    )
+
+
+def _fmt_eur(value: float) -> str:
+    return f"€{value:,.2f}"
+
+
+def _avg_to_rows(
+    avg_df: pd.DataFrame,
+    colors: dict[str, str],
+) -> tuple[list[dict], list[int]]:
+    """Convert an averages DataFrame to template-ready row dicts."""
+    if avg_df.empty or "category" not in avg_df.columns:
+        return [], []
+    year_cols = sorted(c for c in avg_df.columns if isinstance(c, int))
+    rows = []
+    for _, r in avg_df.iterrows():
+        row: dict = {
+            "category": r["category"],
+            "color": colors.get(r["category"], "#95a5a6"),
+        }
+        for y in year_cols:
+            row[str(y)] = _fmt_eur(r[y])
+        row["overall"] = _fmt_eur(r["overall"])
+        rows.append(row)
+    return rows, year_cols
+
+
+def prepare_avg_table_rows(
+    avg_expenses: pd.DataFrame,
+    avg_income: pd.DataFrame,
+    colors: dict[str, str],
+    cat_types: dict[str, str],
+) -> tuple[list[dict], list[dict], list[int]]:
+    """Build template-ready rows for the average-expenses and income tables.
+
+    Returns ``(grouped_expense_rows, avg_income_rows, all_avg_years)``.
+    """
+    avg_expense_rows, avg_years = _avg_to_rows(avg_expenses, colors)
+    avg_income_rows, avg_income_years = _avg_to_rows(avg_income, colors)
+    all_avg_years = sorted(set(avg_years) | set(avg_income_years))
+
+    # Split expenses into consumption / investment with subtotals
+    consumption_rows = [r for r in avg_expense_rows if cat_types.get(r["category"], "consumption") == "consumption"]
+    investment_rows = [r for r in avg_expense_rows if cat_types.get(r["category"], "consumption") == "investment"]
+
+    def _subtotal_row(label: str, categories: list[str]) -> dict:
+        subset = avg_expenses[avg_expenses["category"].isin(categories)]
+        row: dict = {"category": label, "color": "", "is_subtotal": True}
+        for y in avg_years:
+            row[str(y)] = _fmt_eur(float(subset[y].sum())) if y in subset.columns else _fmt_eur(0)
+        row["overall"] = _fmt_eur(float(subset["overall"].sum())) if not subset.empty else _fmt_eur(0)
+        return row
+
+    grouped_expense_rows: list[dict] = []
+    if consumption_rows:
+        grouped_expense_rows.extend(consumption_rows)
+        grouped_expense_rows.append(_subtotal_row("Consumption Subtotal", [r["category"] for r in consumption_rows]))
+    if investment_rows:
+        grouped_expense_rows.extend(investment_rows)
+        grouped_expense_rows.append(_subtotal_row("Investment Subtotal", [r["category"] for r in investment_rows]))
+
+    if grouped_expense_rows:
+        avg_expense_rows = grouped_expense_rows
+
+    return avg_expense_rows, avg_income_rows, all_avg_years
