@@ -41,10 +41,55 @@
       font-size: 0.875rem;
     }
 
+    /* ── Tab bar ──────────────────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.6rem 1.2rem;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: inherit;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
     /* ── Stats grid ──────────────────────────────────────────────────── */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
       gap: 1rem;
       margin-bottom: 1.5rem;
     }
@@ -65,10 +110,13 @@
     }
 
     .stat-value {
-      font-size: 1.45rem;
+      font-size: clamp(1rem, 1.25vw + 0.5rem, 1.45rem);
       font-weight: 700;
       margin-top: 0.3rem;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .stat-value.green { color: var(--green); }
@@ -207,6 +255,133 @@
       vertical-align: middle;
     }
 
+    .no-data {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 3rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+
+    /* ── Financial Health section ───────────────────────────────────── */
+    .fh-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .fh-section h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .fh-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .fh-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+    }
+
+    .fh-card-label {
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .fh-card-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fh-card-bench {
+      color: var(--muted);
+      font-size: 0.7rem;
+      margin-top: 0.2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+
+    .badge-green  { background: rgba(46,204,113,0.15); color: #2ecc71; }
+    .badge-yellow { background: rgba(241,196,15,0.15); color: #f1c40f; }
+    .badge-red    { background: rgba(231,76,60,0.15);  color: #e74c3c; }
+    .badge-muted  { background: rgba(136,146,164,0.15); color: var(--muted); }
+
+    /* ── 50/30/20 stacked bar ──────────────────────────────────────── */
+    .budget-bar-wrap {
+      margin-top: 0.25rem;
+    }
+
+    .budget-bar-wrap h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .budget-bar {
+      display: flex;
+      height: 28px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .budget-bar-seg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      min-width: 2%;
+    }
+
+    .budget-legend {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .budget-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
     @media (max-width: 900px) {
       .chart-row { grid-template-columns: 1fr; }
     }
@@ -215,140 +390,277 @@
       body { padding: 1rem; }
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       h1 { font-size: 1.3rem; }
+      .tab-btn { padding: 0.5rem 0.8rem; font-size: 0.8rem; }
     }
   </style>
 </head>
 <body>
 
   <h1>Bank Statement Analysis</h1>
-  <p class="subtitle">
-    {{ stats.date_from }} – {{ stats.date_to }}
-    &nbsp;·&nbsp; {{ stats.months_count }} month{% if stats.months_count != 1 %}s{% endif %}
-    &nbsp;·&nbsp; {{ stats.transaction_count }} transactions
-  </p>
 
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-label">Total Income</div>
-      <div class="stat-value green">{{ stats.total_income_fmt }}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Total Expenses</div>
-      <div class="stat-value red">{{ stats.total_expenses_fmt }}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Net Savings</div>
-      <div class="stat-value {{ 'green' if stats.net >= 0 else 'red' }}">{{ stats.net_fmt }}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Avg Monthly Income</div>
-      <div class="stat-value">{{ stats.avg_monthly_income_fmt }}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Avg Monthly Expenses</div>
-      <div class="stat-value">{{ stats.avg_monthly_expenses_fmt }}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Avg Monthly Consumption</div>
-      <div class="stat-value red">{{ stats.avg_monthly_consumption_fmt }}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Avg Monthly Investment</div>
-      <div class="stat-value">{{ stats.avg_monthly_investment_fmt }}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Uncategorised</div>
-      <div class="stat-value dim">{{ stats.uncategorised_count }}</div>
-    </div>
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    {% for tab in tabs %}
+    <button class="tab-btn{% if loop.first %} active{% endif %}"
+            onclick="switchTab('{{ tab.tab_id }}')"
+            data-tab="{{ tab.tab_id }}">{{ tab.label }}</button>
+    {% endfor %}
   </div>
 
-  <div class="chart-full">{{ chart_income_expenses|safe }}</div>
-  <div class="chart-full">{{ chart_spending_by_category|safe }}</div>
+  {% for tab in tabs %}
+  <div class="tab-content{% if loop.first %} active{% endif %}" id="tab-{{ tab.tab_id }}">
 
-  <div class="chart-row">
-    <div class="chart-half">{{ chart_category_pie|safe }}</div>
-    <div class="chart-half">{{ chart_savings|safe }}</div>
-  </div>
+    {% if not tab.has_data %}
+    <div class="no-data">No transactions found for this period.</div>
+    {% else %}
 
-  {% if avg_expense_categories %}
-  <div class="avg-section">
-    <h2>Average Monthly Expenses by Category</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Category</th>
-          {% for y in avg_years %}<th class="amount">{{ y }}</th>{% endfor %}
-          <th class="amount">Overall</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in avg_expense_categories %}
-        <tr{% if row.is_subtotal %} class="subtotal"{% endif %}>
-          <td>{% if not row.is_subtotal %}<span class="cat-dot" style="background:{{ row.color }}"></span>{% endif %}{{ row.category }}</td>
-          {% for y in avg_years %}<td class="amount">{{ row[y] }}</td>{% endfor %}
-          <td class="amount" style="font-weight:600">{{ row.overall }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
-
-  {% if avg_income_categories and avg_income_categories|length > 1 %}
-  <div class="avg-section">
-    <h2>Average Monthly Income by Category</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Category</th>
-          {% for y in avg_years %}<th class="amount">{{ y }}</th>{% endfor %}
-          <th class="amount">Overall</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in avg_income_categories %}
-        <tr>
-          <td><span class="cat-dot" style="background:{{ row.color }}"></span>{{ row.category }}</td>
-          {% for y in avg_years %}<td class="amount">{{ row[y] }}</td>{% endfor %}
-          <td class="amount" style="font-weight:600">{{ row.overall }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
-
-  {% if other_transactions %}
-  <details>
-    <summary>Uncategorised Transactions ({{ stats.uncategorised_count }})</summary>
-    <p class="hint">
-      Add keywords from the Merchant or Reference columns to your
-      <code>categories.yaml</code> to categorise these automatically.
+    <p class="subtitle">
+      {{ tab.stats.date_from }} – {{ tab.stats.date_to }}
+      &nbsp;·&nbsp; {{ tab.stats.months_count }} month{% if tab.stats.months_count != 1 %}s{% endif %}
+      &nbsp;·&nbsp; {{ tab.stats.transaction_count }} transactions
     </p>
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Merchant</th>
-          <th>Reference</th>
-          <th style="text-align:right">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in other_transactions %}
-        <tr>
-          <td>{{ row.date }}</td>
-          <td class="merchant">{{ row.merchant }}</td>
-          <td class="reference" title="{{ row.reference }}">{{ row.reference }}</td>
-          <td class="amount {% if row.negative %}neg{% endif %}">
-            {% if row.negative %}-{% endif %}{{ row.amount }}
-          </td>
-        </tr>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Income</div>
+        <div class="stat-value green">{{ tab.stats.total_income_fmt }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Expenses</div>
+        <div class="stat-value red">{{ tab.stats.total_expenses_fmt }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Net Savings</div>
+        <div class="stat-value {{ 'green' if tab.stats.net >= 0 else 'red' }}">{{ tab.stats.net_fmt }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Monthly Income</div>
+        <div class="stat-value">{{ tab.stats.avg_monthly_income_fmt }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Monthly Expenses</div>
+        <div class="stat-value">{{ tab.stats.avg_monthly_expenses_fmt }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Monthly Consumption</div>
+        <div class="stat-value red">{{ tab.stats.avg_monthly_consumption_fmt }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Monthly Investment</div>
+        <div class="stat-value">{{ tab.stats.avg_monthly_investment_fmt }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Uncategorised</div>
+        <div class="stat-value dim">{{ tab.stats.uncategorised_count }}</div>
+      </div>
+    </div>
+
+    {% if tab.benchmarks %}
+    {% set rating_badge = {
+      'healthy': 'badge-green', 'adequate': 'badge-yellow', 'at_risk': 'badge-red',
+      'comfortable': 'badge-green', 'acceptable': 'badge-yellow', 'stretched': 'badge-red',
+      'excellent': 'badge-green', 'good': 'badge-green', 'low': 'badge-yellow',
+      'moderate': 'badge-yellow', 'high': 'badge-red',
+      'on_target': 'badge-green', 'over': 'badge-red', 'under': 'badge-yellow',
+      'stable': 'badge-green', 'increasing': 'badge-red', 'decreasing': 'badge-green',
+      'neutral': 'badge-muted'
+    } %}
+    {% set metric_labels = {
+      'savings_rate': 'Savings Rate',
+      'housing_ratio': 'Housing Cost Ratio',
+      'investment_rate': 'Investment Rate',
+      'engel': "Engel's Coefficient",
+      'expense_trend': 'Expense Trend'
+    } %}
+    <div class="fh-section">
+      <h2>Financial Health</h2>
+      <div class="fh-grid">
+        {% for key in ['savings_rate', 'housing_ratio', 'investment_rate', 'engel', 'expense_trend'] %}
+        {% if key in tab.benchmarks %}
+        {% set m = tab.benchmarks[key] %}
+        <div class="fh-card">
+          <div class="fh-card-label">{{ metric_labels[key] }}</div>
+          <div class="fh-card-value">
+            {{ m.formatted }}
+            <span class="badge {{ rating_badge.get(m.rating, 'badge-muted') }}">{{ m.rating }}</span>
+          </div>
+          <div class="fh-card-bench">Benchmark: {{ m.benchmark }}</div>
+        </div>
+        {% endif %}
         {% endfor %}
-      </tbody>
-    </table>
-  </details>
-  {% endif %}
+      </div>
+
+      {% if 'needs_pct' in tab.benchmarks and tab.benchmarks.needs_pct.value is not none %}
+      {% set n = tab.benchmarks.needs_pct %}
+      {% set w = tab.benchmarks.wants_pct %}
+      {% set s = tab.benchmarks.savings_bucket_pct %}
+      {% set total = n.value + w.value + s.value %}
+      <div class="budget-bar-wrap">
+        <h3>50 / 30 / 20 Budget Rule</h3>
+        {% if total > 0 %}
+        <div class="budget-bar">
+          <div class="budget-bar-seg" style="width:{{ (n.value / total * 100)|round(1) }}%;background:#3498db">
+            {{ n.formatted }}
+          </div>
+          <div class="budget-bar-seg" style="width:{{ (w.value / total * 100)|round(1) }}%;background:#9b59b6">
+            {{ w.formatted }}
+          </div>
+          <div class="budget-bar-seg" style="width:{{ (s.value / total * 100)|round(1) }}%;background:#2ecc71">
+            {{ s.formatted }}
+          </div>
+        </div>
+        {% endif %}
+        <div class="budget-legend">
+          <span><span class="legend-dot" style="background:#3498db"></span> Needs {{ n.formatted }} <span class="badge {{ rating_badge.get(n.rating, 'badge-muted') }}">{{ n.rating }}</span></span>
+          <span><span class="legend-dot" style="background:#9b59b6"></span> Wants {{ w.formatted }} <span class="badge {{ rating_badge.get(w.rating, 'badge-muted') }}">{{ w.rating }}</span></span>
+          <span><span class="legend-dot" style="background:#2ecc71"></span> Savings {{ s.formatted }} <span class="badge {{ rating_badge.get(s.rating, 'badge-muted') }}">{{ s.rating }}</span></span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="chart-full">{{ tab.chart_income_expenses|safe }}</div>
+    <div class="chart-full">{{ tab.chart_spending_by_category|safe }}</div>
+
+    <div class="chart-row">
+      <div class="chart-half">{{ tab.chart_category_pie|safe }}</div>
+      <div class="chart-half">{{ tab.chart_savings|safe }}</div>
+    </div>
+
+    {% if tab.avg_expense_categories %}
+    <div class="avg-section">
+      <h2>Average Monthly Expenses by Category</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            {% for y in tab.avg_years %}<th class="amount">{{ y }}</th>{% endfor %}
+            <th class="amount">Overall</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tab.avg_expense_categories %}
+          <tr{% if row.is_subtotal %} class="subtotal"{% endif %}>
+            <td>{% if not row.is_subtotal %}<span class="cat-dot" style="background:{{ row.color }}"></span>{% endif %}{{ row.category }}</td>
+            {% for y in tab.avg_years %}<td class="amount">{{ row[y] }}</td>{% endfor %}
+            <td class="amount" style="font-weight:600">{{ row.overall }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% if tab.avg_income_categories and tab.avg_income_categories|length > 1 %}
+    <div class="avg-section">
+      <h2>Average Monthly Income by Category</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            {% for y in tab.avg_years %}<th class="amount">{{ y }}</th>{% endfor %}
+            <th class="amount">Overall</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tab.avg_income_categories %}
+          <tr>
+            <td><span class="cat-dot" style="background:{{ row.color }}"></span>{{ row.category }}</td>
+            {% for y in tab.avg_years %}<td class="amount">{{ row[y] }}</td>{% endfor %}
+            <td class="amount" style="font-weight:600">{{ row.overall }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% if tab.other_transactions %}
+    <details>
+      <summary>Uncategorised Transactions ({{ tab.stats.uncategorised_count }})</summary>
+      <p class="hint">
+        Add keywords from the Merchant or Reference columns to your
+        <code>categories.yaml</code> to categorise these automatically.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Merchant</th>
+            <th>Reference</th>
+            <th style="text-align:right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tab.other_transactions %}
+          <tr>
+            <td>{{ row.date }}</td>
+            <td class="merchant">{{ row.merchant }}</td>
+            <td class="reference" title="{{ row.reference }}">{{ row.reference }}</td>
+            <td class="amount {% if row.negative %}neg{% endif %}">
+              {% if row.negative %}-{% endif %}{{ row.amount }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+    {% endif %}
+
+    {% if tab.category_transactions %}
+    {% for cat in tab.category_transactions %}
+    <details>
+      <summary>
+        <span class="cat-dot" style="background:{{ cat.color }}"></span>
+        {{ cat.name|capitalize }} ({{ cat.count }})
+        &nbsp;·&nbsp;
+        <span class="{{ 'neg' if cat.total_negative else '' }}" style="font-variant-numeric:tabular-nums">
+          {% if cat.total_negative %}-{% endif %}{{ cat.total }}
+        </span>
+      </summary>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Merchant</th>
+            <th>Reference</th>
+            <th style="text-align:right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in cat.transactions %}
+          <tr>
+            <td>{{ row.date }}</td>
+            <td class="merchant">{{ row.merchant }}</td>
+            <td class="reference" title="{{ row.reference }}">{{ row.reference }}</td>
+            <td class="amount {% if row.negative %}neg{% endif %}">
+              {% if row.negative %}-{% endif %}{{ row.amount }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+    {% endfor %}
+    {% endif %}
+
+    {% endif %}{# has_data #}
+  </div>
+  {% endfor %}
+
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+      });
+      document.querySelectorAll('.tab-content').forEach(function(div) {
+        div.classList.toggle('active', div.id === 'tab-' + tabId);
+      });
+      // Fix Plotly chart sizing in newly-visible tabs
+      window.dispatchEvent(new Event('resize'));
+    }
+  </script>
 
 </body>
 </html>
