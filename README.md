@@ -4,6 +4,8 @@ A CLI tool that reads **ING Bank Germany** CSV transaction exports, categorises
 each transaction by keyword rules, and produces a **self-contained interactive
 HTML report** with four Plotly charts and a summary table.
 
+DISCLAIMER: This project served as a playfround for me to experiment with `claude code`.
+
 ## Requirements
 
 - Python 3.11+
