@@ -84,6 +84,17 @@ def _category_averages(
     return results[0], results[1]
 
 
+def _benchmark_group_categories(config: dict | None, group_name: str) -> set[str]:
+    """Return category names that belong to a benchmark group."""
+    if not config:
+        return set()
+    return {
+        name
+        for name, cfg in config.get("categories", {}).items()
+        if cfg.get("benchmark_group") == group_name
+    }
+
+
 def _budget_buckets(config: dict | None) -> dict[str, str]:
     """Return a mapping of category name to budget bucket (needs/wants/savings)."""
     if not config:
@@ -121,103 +132,164 @@ def compute_benchmarks(
 ) -> dict:
     """Compute financial health benchmark metrics.
 
+    Ratios are computed per-month and then averaged across months with
+    positive income, preventing partial months from distorting results.
+
     Returns a dict of metric_key -> {value, formatted, rating, benchmark}.
     """
-    income = stats.get("total_income", 0.0)
     benchmarks: dict = {}
 
+    # Build per-month income series from monthly_summary
+    monthly_income = monthly_summary["income"] if "income" in monthly_summary.columns else pd.Series(dtype=float)
+    valid_months = monthly_income[monthly_income > 0]
+
+    has_valid_months = len(valid_months) > 0
+
+    # ── Per-month helper ────────────────────────────────────────────────
+    def _avg_ratio(monthly_numerator: pd.Series) -> float | None:
+        """Compute mean of (numerator / income) across valid months."""
+        if not has_valid_months:
+            return None
+        ratios = []
+        for month in valid_months.index:
+            inc = valid_months[month]
+            num = monthly_numerator.get(month, 0.0)
+            ratios.append(num / inc * 100)
+        return sum(ratios) / len(ratios) if ratios else None
+
     # ── Savings Rate ────────────────────────────────────────────────────
-    if income <= 0:
+    if not has_valid_months:
         benchmarks["savings_rate"] = _na_metric("20%+ healthy")
     else:
-        val = stats["net"] / income * 100
-        if val >= 20:
-            rating = "healthy"
-        elif val >= 10:
-            rating = "adequate"
+        monthly_savings = monthly_summary["income"] - monthly_summary["expenses"]
+        val = _avg_ratio(monthly_savings)
+        if val is None:
+            benchmarks["savings_rate"] = _na_metric("20%+ healthy")
         else:
-            rating = "at_risk"
-        benchmarks["savings_rate"] = _make_metric(
-            val, f"{val:.1f}%", rating, "20%+ healthy",
-        )
+            if val >= 20:
+                rating = "healthy"
+            elif val >= 10:
+                rating = "adequate"
+            else:
+                rating = "at_risk"
+            benchmarks["savings_rate"] = _make_metric(
+                val, f"{val:.1f}%", rating, "20%+ healthy",
+            )
 
     # ── Housing Cost Ratio ──────────────────────────────────────────────
-    if income <= 0:
+    if not has_valid_months:
         benchmarks["housing_ratio"] = _na_metric("<28% comfortable")
     else:
-        housing_cats = {"mortgage", "housing"}
-        housing_total = float(
-            expense_df[expense_df["category"].isin(housing_cats)]["amount"].sum().item()
-            if not expense_df.empty
-            else 0
-        )
-        housing_total = abs(housing_total)
-        val = housing_total / income * 100
-        if val < 28:
-            rating = "comfortable"
-        elif val <= 33:
-            rating = "acceptable"
+        housing_cats = _benchmark_group_categories(config, "housing")
+        if not housing_cats:
+            housing_cats = {"housing"}  # sensible fallback
+        if not expense_df.empty and "month" in expense_df.columns:
+            monthly_housing = (
+                expense_df[expense_df["category"].isin(housing_cats)]
+                .groupby("month")["amount"].sum().abs()
+            )
         else:
-            rating = "stretched"
-        benchmarks["housing_ratio"] = _make_metric(
-            val, f"{val:.1f}%", rating, "<28% comfortable",
-        )
+            monthly_housing = pd.Series(dtype=float)
+        val = _avg_ratio(monthly_housing)
+        if val is None:
+            benchmarks["housing_ratio"] = _na_metric("<28% comfortable")
+        else:
+            if val < 28:
+                rating = "comfortable"
+            elif val <= 33:
+                rating = "acceptable"
+            else:
+                rating = "stretched"
+            benchmarks["housing_ratio"] = _make_metric(
+                val, f"{val:.1f}%", rating, "<28% comfortable",
+            )
 
     # ── Investment Rate ─────────────────────────────────────────────────
-    if income <= 0:
+    if not has_valid_months:
         benchmarks["investment_rate"] = _na_metric("15%+ excellent")
     else:
-        inv = stats.get("total_investment", 0.0)
-        val = inv / income * 100
-        if val >= 15:
-            rating = "excellent"
-        elif val >= 10:
-            rating = "good"
+        cat_types = _category_types(config)
+        if not expense_df.empty and "month" in expense_df.columns:
+            inv_mask = expense_df["category"].map(
+                lambda c: cat_types.get(c, "consumption") == "investment"
+            )
+            monthly_inv = (
+                expense_df[inv_mask]
+                .groupby("month")["amount"].sum().abs()
+            )
         else:
-            rating = "low"
-        benchmarks["investment_rate"] = _make_metric(
-            val, f"{val:.1f}%", rating, "15%+ excellent",
-        )
+            monthly_inv = pd.Series(dtype=float)
+        val = _avg_ratio(monthly_inv)
+        if val is None:
+            benchmarks["investment_rate"] = _na_metric("15%+ excellent")
+        else:
+            if val >= 15:
+                rating = "excellent"
+            elif val >= 10:
+                rating = "good"
+            else:
+                rating = "low"
+            benchmarks["investment_rate"] = _make_metric(
+                val, f"{val:.1f}%", rating, "15%+ excellent",
+            )
 
     # ── Engel's Coefficient ─────────────────────────────────────────────
-    if income <= 0:
+    if not has_valid_months:
         benchmarks["engel"] = _na_metric("<15% comfortable")
     else:
-        food_cats = {"groceries", "dining"}
-        food_total = float(
-            abs(expense_df[expense_df["category"].isin(food_cats)]["amount"].sum().item())
-            if not expense_df.empty
-            else 0
-        )
-        val = food_total / income * 100
-        if val < 15:
-            rating = "comfortable"
-        elif val <= 25:
-            rating = "moderate"
+        food_cats = _benchmark_group_categories(config, "food")
+        if not food_cats:
+            food_cats = {"groceries", "dining"}  # sensible fallback
+        if not expense_df.empty and "month" in expense_df.columns:
+            monthly_food = (
+                expense_df[expense_df["category"].isin(food_cats)]
+                .groupby("month")["amount"].sum().abs()
+            )
         else:
-            rating = "high"
-        benchmarks["engel"] = _make_metric(
-            val, f"{val:.1f}%", rating, "<15% comfortable",
-        )
+            monthly_food = pd.Series(dtype=float)
+        val = _avg_ratio(monthly_food)
+        if val is None:
+            benchmarks["engel"] = _na_metric("<15% comfortable")
+        else:
+            if val < 15:
+                rating = "comfortable"
+            elif val <= 25:
+                rating = "moderate"
+            else:
+                rating = "high"
+            benchmarks["engel"] = _make_metric(
+                val, f"{val:.1f}%", rating, "<15% comfortable",
+            )
 
     # ── 50/30/20 Rule ───────────────────────────────────────────────────
     buckets = _budget_buckets(config)
-    if income <= 0:
+    if not has_valid_months:
         benchmarks["needs_pct"] = _na_metric("≤50%")
         benchmarks["wants_pct"] = _na_metric("≤30%")
         benchmarks["savings_bucket_pct"] = _na_metric("≥20%")
     else:
-        bucket_totals: dict[str, float] = {"needs": 0.0, "wants": 0.0, "savings": 0.0}
-        if not expense_df.empty:
+        # Build per-month bucket totals
+        monthly_bucket: dict[str, pd.Series] = {
+            "needs": pd.Series(dtype=float),
+            "wants": pd.Series(dtype=float),
+            "savings": pd.Series(dtype=float),
+        }
+        if not expense_df.empty and "month" in expense_df.columns:
             for cat, bucket in buckets.items():
-                cat_total = abs(float(
-                    expense_df[expense_df["category"] == cat]["amount"].sum().item()
-                ))
-                bucket_totals[bucket] += cat_total
+                cat_monthly = (
+                    expense_df[expense_df["category"] == cat]
+                    .groupby("month")["amount"].sum().abs()
+                )
+                monthly_bucket[bucket] = monthly_bucket[bucket].add(cat_monthly, fill_value=0)
 
-        needs_val = bucket_totals["needs"] / income * 100
-        wants_val = bucket_totals["wants"] / income * 100
-        savings_val = bucket_totals["savings"] / income * 100
+        needs_val = _avg_ratio(monthly_bucket["needs"])
+        wants_val = _avg_ratio(monthly_bucket["wants"])
+        savings_val = _avg_ratio(monthly_bucket["savings"])
+
+        # Default to 0 if no data (but valid months exist)
+        needs_val = needs_val if needs_val is not None else 0.0
+        wants_val = wants_val if wants_val is not None else 0.0
+        savings_val = savings_val if savings_val is not None else 0.0
 
         benchmarks["needs_pct"] = _make_metric(
             needs_val, f"{needs_val:.1f}%",
@@ -303,6 +375,16 @@ def aggregate(
     if excluded:
         df = df[~df["category"].isin(excluded)]
 
+    # Filter out inter-account transfers by merchant name
+    own_accounts = config.get("own_accounts", []) if config else []
+    if own_accounts and "merchant" in df.columns:
+        own_lower = {name.lower() for name in own_accounts}
+        is_internal = df["merchant"].str.lower().isin(own_lower)
+        internal_transfer_count = int(is_internal.sum())
+        df = df[~is_internal]
+    else:
+        internal_transfer_count = 0
+
     income_df = df[df["amount"] > 0]
     expense_df = df[df["amount"] < 0]
 
@@ -359,6 +441,7 @@ def aggregate(
         "avg_monthly_expenses": avg_monthly_expenses,
         "uncategorised_count": int((df["category"] == "other").sum()),
         "excluded_count": excluded_count,
+        "internal_transfer_count": internal_transfer_count,
     }
 
     # ── Consumption vs investment split ───────────────────────────────────

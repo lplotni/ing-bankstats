@@ -28,13 +28,25 @@ from . import categorizer, parser, report
     help="Custom categories YAML file. Defaults to the bundled categories.",
 )
 @click.option(
+    "--own-accounts",
+    "-a",
+    multiple=True,
+    help="Merchant name(s) to treat as own-account transfers (repeatable). Merged with config file values.",
+)
+@click.option(
     "--open",
     "open_browser",
     is_flag=True,
     default=False,
     help="Open the report in the default browser after generating.",
 )
-def visualise(csv_files: tuple[str, ...], output: str | None, config_path: str | None, open_browser: bool) -> None:
+def visualise(
+    csv_files: tuple[str, ...],
+    output: str | None,
+    config_path: str | None,
+    own_accounts: tuple[str, ...],
+    open_browser: bool,
+) -> None:
     """Parse one or more ING Bank Germany CSV exports and generate an interactive HTML report."""
     # ── Resolve output path ────────────────────────────────────────────────
     if output:
@@ -47,6 +59,12 @@ def visualise(csv_files: tuple[str, ...], output: str | None, config_path: str |
     # ── Load config ────────────────────────────────────────────────────────
     click.echo(f"Loading config …")
     config = categorizer.load_config(config_path)
+
+    # ── Merge CLI own-accounts into config ──────────────────────────────────
+    if own_accounts:
+        existing = config.get("own_accounts", [])
+        merged = list(dict.fromkeys(existing + list(own_accounts)))
+        config["own_accounts"] = merged
 
     # ── Parse CSV(s) ───────────────────────────────────────────────────────
     dfs = []

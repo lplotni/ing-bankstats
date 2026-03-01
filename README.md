@@ -33,8 +33,11 @@ visualise data/umsatzanzeige.template.csv --open
 # Use a custom categories file
 visualise data/umsatzanzeige.template.csv -c my_categories.yaml
 
+# Exclude own-account transfers by merchant name (repeatable)
+visualise transactions.csv -a "My Savings Account" -a "Shared Account"
+
 # All options together
-visualise transactions.csv -o report.html -c categories.yaml --open
+visualise transactions.csv -o report.html -c categories.yaml -a "John Doe" --open
 ```
 
 ## Report Contents
@@ -98,7 +101,7 @@ categories:
 
 Optional fields:
 
-- **`own_accounts`** — merchant names for inter-account transfers (excluded from all calculations).
+- **`own_accounts`** — merchant names for inter-account transfers (excluded from all calculations). Can also be passed via `--own-accounts` / `-a` on the CLI; values are merged.
 - **`benchmark_group`** — groups categories for Financial Health ratios (`housing` → housing cost ratio, `food` → Engel's coefficient).
 - **`type`** — `investment` vs default `consumption`; affects the investment rate calculation.
 - **`budget_bucket`** — `needs` / `wants` / `savings` for the 50/30/20 rule.

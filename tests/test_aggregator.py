@@ -3,7 +3,13 @@
 import pandas as pd
 import pytest
 
-from ing_bankstats.aggregator import aggregate, _category_types, compute_benchmarks, AggregationResult
+from ing_bankstats.aggregator import (
+    aggregate,
+    _category_types,
+    _benchmark_group_categories,
+    compute_benchmarks,
+    AggregationResult,
+)
 
 
 @pytest.fixture
@@ -264,9 +270,9 @@ class TestComputeBenchmarks:
         return {
             "categories": {
                 "income": {"color": "#2ecc71"},
-                "groceries": {"color": "#e67e22", "budget_bucket": "needs"},
-                "dining": {"color": "#e17055", "budget_bucket": "wants"},
-                "housing": {"color": "#a29bfe", "budget_bucket": "needs"},
+                "groceries": {"color": "#e67e22", "benchmark_group": "food", "budget_bucket": "needs"},
+                "dining": {"color": "#e17055", "benchmark_group": "food", "budget_bucket": "wants"},
+                "housing": {"color": "#a29bfe", "benchmark_group": "housing", "budget_bucket": "needs"},
                 "entertainment": {"color": "#f39c12", "budget_bucket": "wants"},
                 "investment": {"color": "#2980b9", "type": "investment", "budget_bucket": "savings"},
                 "health": {"color": "#e74c3c", "budget_bucket": "needs"},
@@ -283,22 +289,24 @@ class TestComputeBenchmarks:
 
     def test_savings_rate_adequate(self):
         stats = {"net": 750.0, "total_income": 5000.0, "total_investment": 0.0}
-        expense_df = pd.DataFrame(columns=["amount", "category"])
-        monthly = pd.DataFrame({"expenses": [2125.0, 2125.0]})
+        expense_df = pd.DataFrame(columns=["amount", "category", "month"])
+        # 15% savings rate per month → adequate
+        monthly = pd.DataFrame({"income": [2500.0, 2500.0], "expenses": [2125.0, 2125.0]})
         b = compute_benchmarks(stats, expense_df, monthly, None)
         assert b["savings_rate"]["rating"] == "adequate"
 
     def test_savings_rate_at_risk(self):
         stats = {"net": 200.0, "total_income": 5000.0, "total_investment": 0.0}
-        expense_df = pd.DataFrame(columns=["amount", "category"])
-        monthly = pd.DataFrame({"expenses": [2400.0, 2400.0]})
+        expense_df = pd.DataFrame(columns=["amount", "category", "month"])
+        # 4% savings rate per month → at_risk
+        monthly = pd.DataFrame({"income": [2500.0, 2500.0], "expenses": [2400.0, 2400.0]})
         b = compute_benchmarks(stats, expense_df, monthly, None)
         assert b["savings_rate"]["rating"] == "at_risk"
 
     def test_zero_income_returns_na(self):
         stats = {"net": 0.0, "total_income": 0.0, "total_investment": 0.0}
-        expense_df = pd.DataFrame(columns=["amount", "category"])
-        monthly = pd.DataFrame({"expenses": []})
+        expense_df = pd.DataFrame(columns=["amount", "category", "month"])
+        monthly = pd.DataFrame({"income": [0.0], "expenses": [0.0]})
         b = compute_benchmarks(stats, expense_df, monthly, None)
         assert b["savings_rate"]["value"] is None
         assert b["savings_rate"]["formatted"] == "N/A"
@@ -309,11 +317,16 @@ class TestComputeBenchmarks:
 
     def test_housing_ratio(self, benchmark_config):
         stats = {"net": 3000.0, "total_income": 5000.0, "total_investment": 0.0}
+        m = pd.Period("2025-01", "M")
         expense_df = pd.DataFrame({
             "amount": [-1000.0, -400.0, -100.0],
             "category": ["housing", "groceries", "entertainment"],
+            "month": [m, m, m],
         })
-        monthly = pd.DataFrame({"expenses": [1500.0]})
+        monthly = pd.DataFrame(
+            {"income": [5000.0], "expenses": [1500.0]},
+            index=pd.PeriodIndex([m]),
+        )
         b = compute_benchmarks(stats, expense_df, monthly, benchmark_config)
         # housing=1000/5000*100=20%
         assert b["housing_ratio"]["value"] == pytest.approx(20.0)
@@ -321,11 +334,16 @@ class TestComputeBenchmarks:
 
     def test_housing_ratio_stretched(self, benchmark_config):
         stats = {"net": 1000.0, "total_income": 3000.0, "total_investment": 0.0}
+        m = pd.Period("2025-01", "M")
         expense_df = pd.DataFrame({
             "amount": [-1100.0],
             "category": ["housing"],
+            "month": [m],
         })
-        monthly = pd.DataFrame({"expenses": [2000.0]})
+        monthly = pd.DataFrame(
+            {"income": [3000.0], "expenses": [2000.0]},
+            index=pd.PeriodIndex([m]),
+        )
         b = compute_benchmarks(stats, expense_df, monthly, benchmark_config)
         # 1100/3000*100=36.67%
         assert b["housing_ratio"]["rating"] == "stretched"
@@ -346,11 +364,16 @@ class TestComputeBenchmarks:
 
     def test_fifty_thirty_twenty(self, benchmark_config):
         stats = {"net": 1000.0, "total_income": 5000.0, "total_investment": 500.0}
+        m = pd.Period("2025-01", "M")
         expense_df = pd.DataFrame({
             "amount": [-2000.0, -800.0, -500.0, -700.0],
             "category": ["groceries", "entertainment", "investment", "health"],
+            "month": [m, m, m, m],
         })
-        monthly = pd.DataFrame({"expenses": [4000.0]})
+        monthly = pd.DataFrame(
+            {"income": [5000.0], "expenses": [4000.0]},
+            index=pd.PeriodIndex([m]),
+        )
         b = compute_benchmarks(stats, expense_df, monthly, benchmark_config)
         # needs: groceries(2000)+health(700)=2700 → 54%
         assert b["needs_pct"]["value"] == pytest.approx(54.0)
@@ -364,30 +387,30 @@ class TestComputeBenchmarks:
 
     def test_expense_trend_requires_6_months(self):
         stats = {"net": 1000.0, "total_income": 5000.0, "total_investment": 0.0}
-        expense_df = pd.DataFrame(columns=["amount", "category"])
-        monthly = pd.DataFrame({"expenses": [100.0, 200.0, 300.0]})  # only 3 months
+        expense_df = pd.DataFrame(columns=["amount", "category", "month"])
+        monthly = pd.DataFrame({"income": [1000.0, 1000.0, 1000.0], "expenses": [100.0, 200.0, 300.0]})
         b = compute_benchmarks(stats, expense_df, monthly, None)
         assert b["expense_trend"]["value"] is None
         assert b["expense_trend"]["formatted"] == "N/A"
 
     def test_expense_trend_stable(self):
         stats = {"net": 1000.0, "total_income": 5000.0, "total_investment": 0.0}
-        expense_df = pd.DataFrame(columns=["amount", "category"])
-        monthly = pd.DataFrame({"expenses": [100, 100, 100, 100, 100, 100]})
+        expense_df = pd.DataFrame(columns=["amount", "category", "month"])
+        monthly = pd.DataFrame({"income": [1000]*6, "expenses": [100, 100, 100, 100, 100, 100]})
         b = compute_benchmarks(stats, expense_df, monthly, None)
         assert b["expense_trend"]["rating"] == "stable"
 
     def test_expense_trend_increasing(self):
         stats = {"net": 1000.0, "total_income": 5000.0, "total_investment": 0.0}
-        expense_df = pd.DataFrame(columns=["amount", "category"])
-        monthly = pd.DataFrame({"expenses": [100, 100, 100, 200, 200, 200]})
+        expense_df = pd.DataFrame(columns=["amount", "category", "month"])
+        monthly = pd.DataFrame({"income": [1000]*6, "expenses": [100, 100, 100, 200, 200, 200]})
         b = compute_benchmarks(stats, expense_df, monthly, None)
         assert b["expense_trend"]["rating"] == "increasing"
 
     def test_expense_trend_decreasing(self):
         stats = {"net": 1000.0, "total_income": 5000.0, "total_investment": 0.0}
-        expense_df = pd.DataFrame(columns=["amount", "category"])
-        monthly = pd.DataFrame({"expenses": [200, 200, 200, 100, 100, 100]})
+        expense_df = pd.DataFrame(columns=["amount", "category", "month"])
+        monthly = pd.DataFrame({"income": [1000]*6, "expenses": [200, 200, 200, 100, 100, 100]})
         b = compute_benchmarks(stats, expense_df, monthly, None)
         assert b["expense_trend"]["rating"] == "decreasing"
 
@@ -401,3 +424,106 @@ class TestComputeBenchmarks:
         assert "needs_pct" in result.benchmarks
         assert "wants_pct" in result.benchmarks
         assert "savings_bucket_pct" in result.benchmarks
+
+    def test_per_month_averaging_skips_zero_income_months(self, benchmark_config):
+        """Months with zero income are excluded from ratio averaging."""
+        m1 = pd.Period("2025-01", "M")
+        m2 = pd.Period("2025-02", "M")
+        m3 = pd.Period("2025-03", "M")
+        expense_df = pd.DataFrame({
+            "amount": [-500.0, -500.0, -500.0],
+            "category": ["housing", "housing", "housing"],
+            "month": [m1, m2, m3],
+        })
+        monthly = pd.DataFrame(
+            {"income": [5000.0, 0.0, 5000.0], "expenses": [500.0, 500.0, 500.0]},
+            index=pd.PeriodIndex([m1, m2, m3]),
+        )
+        stats = {"net": 8500.0, "total_income": 10000.0, "total_investment": 0.0}
+        b = compute_benchmarks(stats, expense_df, monthly, benchmark_config)
+        # Only m1 and m3 count: 500/5000*100 = 10% each → avg 10%
+        assert b["housing_ratio"]["value"] == pytest.approx(10.0)
+
+    def test_mortgage_not_in_housing_ratio(self, benchmark_config):
+        """Mortgage (no benchmark_group: housing) is excluded from housing ratio."""
+        m = pd.Period("2025-01", "M")
+        expense_df = pd.DataFrame({
+            "amount": [-500.0, -1000.0],
+            "category": ["housing", "mortgage"],
+            "month": [m, m],
+        })
+        monthly = pd.DataFrame(
+            {"income": [5000.0], "expenses": [1500.0]},
+            index=pd.PeriodIndex([m]),
+        )
+        stats = {"net": 3500.0, "total_income": 5000.0, "total_investment": 1000.0}
+        b = compute_benchmarks(stats, expense_df, monthly, benchmark_config)
+        # Only housing (500) counts, not mortgage (1000)
+        assert b["housing_ratio"]["value"] == pytest.approx(10.0)
+
+
+class TestBenchmarkGroupCategories:
+    def test_returns_matching_categories(self):
+        config = {
+            "categories": {
+                "groceries": {"benchmark_group": "food"},
+                "dining": {"benchmark_group": "food"},
+                "housing": {"benchmark_group": "housing"},
+            }
+        }
+        assert _benchmark_group_categories(config, "food") == {"groceries", "dining"}
+        assert _benchmark_group_categories(config, "housing") == {"housing"}
+
+    def test_returns_empty_for_unknown_group(self):
+        config = {"categories": {"groceries": {"benchmark_group": "food"}}}
+        assert _benchmark_group_categories(config, "housing") == set()
+
+    def test_returns_empty_without_config(self):
+        assert _benchmark_group_categories(None, "food") == set()
+
+
+class TestOwnAccountsFiltering:
+    def test_own_accounts_excluded_from_income_and_expenses(self):
+        df = pd.DataFrame({
+            "date": pd.to_datetime(["2025-01-05", "2025-01-10", "2025-01-15"]),
+            "merchant": ["Arbeitgeber", "My Savings Account", "REWE"],
+            "reference": ["Gehalt", "Transfer", "Einkauf"],
+            "amount": [3000.0, -500.0, -100.0],
+            "category": ["income", "savings", "groceries"],
+        })
+        config = {
+            "own_accounts": ["My Savings Account"],
+            "categories": {
+                "income": {"color": "#2ecc71"},
+                "savings": {"color": "#00b894", "type": "investment"},
+                "groceries": {"color": "#e67e22"},
+            },
+        }
+        result = aggregate(df, config)
+        assert result.stats["total_income"] == pytest.approx(3000.0)
+        assert result.stats["total_expenses"] == pytest.approx(100.0)
+        assert result.stats["internal_transfer_count"] == 1
+
+    def test_own_accounts_case_insensitive(self):
+        df = pd.DataFrame({
+            "date": pd.to_datetime(["2025-01-05", "2025-01-10"]),
+            "merchant": ["Arbeitgeber", "MY SAVINGS ACCOUNT"],
+            "reference": ["Gehalt", "Transfer"],
+            "amount": [3000.0, -500.0],
+            "category": ["income", "savings"],
+        })
+        config = {
+            "own_accounts": ["my savings account"],
+            "categories": {
+                "income": {"color": "#2ecc71"},
+                "savings": {"color": "#00b894"},
+            },
+        }
+        result = aggregate(df, config)
+        assert result.stats["internal_transfer_count"] == 1
+        assert result.stats["total_expenses"] == pytest.approx(0.0)
+
+    def test_empty_own_accounts_no_filtering(self, categorised_df):
+        config = {"own_accounts": [], "categories": {}}
+        result = aggregate(categorised_df, config)
+        assert result.stats["internal_transfer_count"] == 0
