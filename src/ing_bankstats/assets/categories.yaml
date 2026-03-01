@@ -24,7 +24,7 @@ categories:
   mortgage:
     color: "#8e44ad"
     type: investment
-    budget_bucket: needs
+    budget_bucket: savings
     keywords:
       - tilgung
       - sondertilgung
