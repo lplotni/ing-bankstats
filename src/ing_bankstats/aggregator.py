@@ -17,6 +17,7 @@ class AggregationResult:
     stats: dict
     avg_expenses: pd.DataFrame
     avg_income: pd.DataFrame
+    benchmarks: dict = None
 
 
 def _category_types(config: dict | None) -> dict[str, str]:
@@ -81,6 +82,180 @@ def _category_averages(
         results.append(result)
 
     return results[0], results[1]
+
+
+def _budget_buckets(config: dict | None) -> dict[str, str]:
+    """Return a mapping of category name to budget bucket (needs/wants/savings)."""
+    if not config:
+        return {}
+    return {
+        name: cfg["budget_bucket"]
+        for name, cfg in config.get("categories", {}).items()
+        if "budget_bucket" in cfg
+    }
+
+
+def _make_metric(
+    value: float | None,
+    formatted: str,
+    rating: str,
+    benchmark: str,
+) -> dict:
+    return {
+        "value": value,
+        "formatted": formatted,
+        "rating": rating,
+        "benchmark": benchmark,
+    }
+
+
+def _na_metric(benchmark: str) -> dict:
+    return _make_metric(None, "N/A", "neutral", benchmark)
+
+
+def compute_benchmarks(
+    stats: dict,
+    expense_df: pd.DataFrame,
+    monthly_summary: pd.DataFrame,
+    config: dict | None,
+) -> dict:
+    """Compute financial health benchmark metrics.
+
+    Returns a dict of metric_key -> {value, formatted, rating, benchmark}.
+    """
+    income = stats.get("total_income", 0.0)
+    benchmarks: dict = {}
+
+    # ── Savings Rate ────────────────────────────────────────────────────
+    if income <= 0:
+        benchmarks["savings_rate"] = _na_metric("20%+ healthy")
+    else:
+        val = stats["net"] / income * 100
+        if val >= 20:
+            rating = "healthy"
+        elif val >= 10:
+            rating = "adequate"
+        else:
+            rating = "at_risk"
+        benchmarks["savings_rate"] = _make_metric(
+            val, f"{val:.1f}%", rating, "20%+ healthy",
+        )
+
+    # ── Housing Cost Ratio ──────────────────────────────────────────────
+    if income <= 0:
+        benchmarks["housing_ratio"] = _na_metric("<28% comfortable")
+    else:
+        housing_cats = {"mortgage", "housing"}
+        housing_total = float(
+            expense_df[expense_df["category"].isin(housing_cats)]["amount"].sum().item()
+            if not expense_df.empty
+            else 0
+        )
+        housing_total = abs(housing_total)
+        val = housing_total / income * 100
+        if val < 28:
+            rating = "comfortable"
+        elif val <= 33:
+            rating = "acceptable"
+        else:
+            rating = "stretched"
+        benchmarks["housing_ratio"] = _make_metric(
+            val, f"{val:.1f}%", rating, "<28% comfortable",
+        )
+
+    # ── Investment Rate ─────────────────────────────────────────────────
+    if income <= 0:
+        benchmarks["investment_rate"] = _na_metric("15%+ excellent")
+    else:
+        inv = stats.get("total_investment", 0.0)
+        val = inv / income * 100
+        if val >= 15:
+            rating = "excellent"
+        elif val >= 10:
+            rating = "good"
+        else:
+            rating = "low"
+        benchmarks["investment_rate"] = _make_metric(
+            val, f"{val:.1f}%", rating, "15%+ excellent",
+        )
+
+    # ── Engel's Coefficient ─────────────────────────────────────────────
+    if income <= 0:
+        benchmarks["engel"] = _na_metric("<15% comfortable")
+    else:
+        food_cats = {"groceries", "dining"}
+        food_total = float(
+            abs(expense_df[expense_df["category"].isin(food_cats)]["amount"].sum().item())
+            if not expense_df.empty
+            else 0
+        )
+        val = food_total / income * 100
+        if val < 15:
+            rating = "comfortable"
+        elif val <= 25:
+            rating = "moderate"
+        else:
+            rating = "high"
+        benchmarks["engel"] = _make_metric(
+            val, f"{val:.1f}%", rating, "<15% comfortable",
+        )
+
+    # ── 50/30/20 Rule ───────────────────────────────────────────────────
+    buckets = _budget_buckets(config)
+    if income <= 0:
+        benchmarks["needs_pct"] = _na_metric("≤50%")
+        benchmarks["wants_pct"] = _na_metric("≤30%")
+        benchmarks["savings_bucket_pct"] = _na_metric("≥20%")
+    else:
+        bucket_totals: dict[str, float] = {"needs": 0.0, "wants": 0.0, "savings": 0.0}
+        if not expense_df.empty:
+            for cat, bucket in buckets.items():
+                cat_total = abs(float(
+                    expense_df[expense_df["category"] == cat]["amount"].sum().item()
+                ))
+                bucket_totals[bucket] += cat_total
+
+        needs_val = bucket_totals["needs"] / income * 100
+        wants_val = bucket_totals["wants"] / income * 100
+        savings_val = bucket_totals["savings"] / income * 100
+
+        benchmarks["needs_pct"] = _make_metric(
+            needs_val, f"{needs_val:.1f}%",
+            "on_target" if needs_val <= 50 else "over",
+            "≤50%",
+        )
+        benchmarks["wants_pct"] = _make_metric(
+            wants_val, f"{wants_val:.1f}%",
+            "on_target" if wants_val <= 30 else "over",
+            "≤30%",
+        )
+        benchmarks["savings_bucket_pct"] = _make_metric(
+            savings_val, f"{savings_val:.1f}%",
+            "on_target" if savings_val >= 20 else "under",
+            "≥20%",
+        )
+
+    # ── Expense Trend ───────────────────────────────────────────────────
+    if len(monthly_summary) >= 6:
+        recent_3 = monthly_summary["expenses"].iloc[-3:].mean()
+        prior_3 = monthly_summary["expenses"].iloc[-6:-3].mean()
+        if prior_3 > 0:
+            val = (recent_3 - prior_3) / prior_3 * 100
+            if abs(val) < 5:
+                rating = "stable"
+            elif val > 0:
+                rating = "increasing"
+            else:
+                rating = "decreasing"
+            benchmarks["expense_trend"] = _make_metric(
+                val, f"{val:+.1f}%", rating, "±5% stable",
+            )
+        else:
+            benchmarks["expense_trend"] = _na_metric("±5% stable")
+    else:
+        benchmarks["expense_trend"] = _na_metric("±5% stable")
+
+    return benchmarks
 
 
 def aggregate(
@@ -214,6 +389,9 @@ def aggregate(
     # ── Category averages (per year + overall) ────────────────────────────
     avg_expenses, avg_income = _category_averages(df)
 
+    # ── Financial health benchmarks ─────────────────────────────────────
+    benchmarks = compute_benchmarks(stats, expense_df, monthly_summary, config)
+
     return AggregationResult(
         monthly_summary=monthly_summary,
         monthly_by_category=monthly_by_category,
@@ -221,6 +399,7 @@ def aggregate(
         stats=stats,
         avg_expenses=avg_expenses,
         avg_income=avg_income,
+        benchmarks=benchmarks,
     )
 
 

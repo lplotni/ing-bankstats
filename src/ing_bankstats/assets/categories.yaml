@@ -3,8 +3,8 @@
 # How matching works:
 #   - Each transaction's merchant + reference text is searched (case-insensitive).
 #   - Categories HIGHER in this file take priority when a transaction matches
-#     multiple categories (e.g. "uber eats" matches both food and transport,
-#     but food wins because it appears first).
+#     multiple categories (e.g. "uber eats" matches both dining and travel,
+#     but dining wins because it appears first).
 #   - Keywords are regex-escaped; use plain text, no regex syntax needed.
 #   - "other" at the bottom catches everything that doesn't match above.
 
@@ -23,6 +23,8 @@ categories:
 
   mortgage:
     color: "#8e44ad"
+    type: investment
+    budget_bucket: needs
     keywords:
       - tilgung
       - sondertilgung
@@ -30,6 +32,7 @@ categories:
 
   housing:
     color: "#a29bfe"
+    budget_bucket: needs
     keywords:
       - hausgeld
       - "weg gert-marcus"
@@ -41,8 +44,31 @@ categories:
       - grundsteuer
       - steuerkasse
 
-  food:
+  dining:
+    color: "#e17055"
+    budget_bucket: wants
+    keywords:
+      - restaurant
+      - pizza
+      - lieferando
+      - "uber eats"
+      - mcdonald
+      - takeaway
+      - "hanoi deli"
+      - "mammas canteen"
+      - döner
+      - kebab
+      - sushi
+      - imbiss
+      - bistro
+      - gastronomie
+      - eiscafe
+      - braugasthaus
+      - trattoria
+
+  groceries:
     color: "#e67e22"
+    budget_bucket: needs
     keywords:
       # Supermarkets
       - rewe
@@ -69,31 +95,14 @@ categories:
       - supermarkt
       - "wein-depot"
       - jacques
-      # Restaurants / takeaway
-      - restaurant
-      - pizza
-      - lieferando
-      - "uber eats"
-      - mcdonald
-      - kantine
-      - takeaway
-      - "hanoi deli"
-      - "mammas canteen"
-      - döner
-      - kebab
-      - sushi
-      - imbiss
-      - bistro
-      - gastronomie
-      - eiscafe
-      - braugasthaus
-      - trattoria
+      - feinkost
       - andronaco
       - eurovita
-      - feinkost
+      - kantine
 
-  transport:
+  commuting:
     color: "#3498db"
+    budget_bucket: needs
     keywords:
       # Public transit
       - hvv
@@ -115,13 +124,17 @@ categories:
       # Car rental
       - starcar
       - mietwagen
-      # Ride hailing
-      - "free now"
-      - freenow
-      - moia
-      - uber
-      - bolt
-      - "urban mobility"
+      # Bike subscription
+      - swapfiets
+      # Parking
+      - parkhaus
+      - parken
+      - parkautomaten
+
+  travel:
+    color: "#0984e3"
+    budget_bucket: wants
+    keywords:
       # Air
       - lufthansa
       - ryanair
@@ -130,15 +143,17 @@ categories:
       # Bus
       - flixbus
       - fernbus
-      # Bike subscription
-      - swapfiets
-      # Parking
-      - parkhaus
-      - parken
-      - parkautomaten
+      # Ride hailing
+      - "free now"
+      - freenow
+      - moia
+      - uber
+      - bolt
+      - "urban mobility"
 
   car:
     color: "#636e72"
+    budget_bucket: needs
     keywords:
       - finn
       - sixt
@@ -150,6 +165,7 @@ categories:
 
   health:
     color: "#e74c3c"
+    budget_bucket: needs
     keywords:
       - zahnarzt
       - zahnaerzte
@@ -165,8 +181,19 @@ categories:
       - krankenkasse
       - gesundheit
 
+  drugstore:
+    color: "#fd79a8"
+    budget_bucket: needs
+    keywords:
+      - "dm-drogerie"
+      - "dm fil"
+      - rossmann
+      - budni
+      - budnikowsky
+
   shopping:
     color: "#9b59b6"
+    budget_bucket: wants
     keywords:
       # Online
       - amazon
@@ -186,12 +213,6 @@ categories:
       - primark
       - kaufhof
       - karstadt
-      # Drugstores
-      - "dm-drogerie"
-      - "dm fil"
-      - rossmann
-      - budni
-      - budnikowsky
       # Other retail
       - thomann
       - thalia
@@ -200,6 +221,7 @@ categories:
 
   entertainment:
     color: "#f39c12"
+    budget_bucket: wants
     keywords:
       # Streaming
       - netflix
@@ -227,6 +249,7 @@ categories:
 
   utilities:
     color: "#1abc9c"
+    budget_bucket: needs
     keywords:
       # Energy
       - vattenfall
@@ -252,6 +275,7 @@ categories:
 
   insurance:
     color: "#d35400"
+    budget_bucket: needs
     keywords:
       - versicherung
       - haftpflicht
@@ -265,6 +289,8 @@ categories:
 
   investment:
     color: "#2980b9"
+    type: investment
+    budget_bucket: savings
     keywords:
       - "trade republic"
       - flatex
@@ -279,12 +305,15 @@ categories:
 
   savings:
     color: "#00b894"
+    type: investment
+    budget_bucket: savings
     keywords:
       - sparen
       - "ca consumer finance"
 
   childcare:
     color: "#16a085"
+    budget_bucket: needs
     keywords:
       - elbkinder
       - kita
@@ -293,6 +322,7 @@ categories:
 
   cash:
     color: "#7f8c8d"
+    budget_bucket: wants
     keywords:
       - bargeldauszahlung
 

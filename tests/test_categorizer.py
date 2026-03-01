@@ -42,10 +42,10 @@ class TestCategorise:
         result = categorise(simple_df, config)
         assert "category" in result.columns
 
-    def test_rewe_categorised_as_food(self, simple_df, config):
+    def test_rewe_categorised_as_groceries(self, simple_df, config):
         result = categorise(simple_df, config)
         rewe_row = result[result["merchant"].str.contains("REWE")]
-        assert rewe_row["category"].iloc[0] == "food"
+        assert rewe_row["category"].iloc[0] == "groceries"
 
     def test_netflix_categorised_as_entertainment(self, simple_df, config):
         result = categorise(simple_df, config)
@@ -79,7 +79,7 @@ class TestCategorise:
             }
         )
         result = categorise(df, config)
-        assert result["category"].iloc[0] == "food"
+        assert result["category"].iloc[0] == "groceries"
 
     def test_does_not_mutate_input(self, simple_df, config):
         original_cols = list(simple_df.columns)
