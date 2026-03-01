@@ -98,8 +98,8 @@ class TestGenerateReport:
         out = tmp_path / "report.html"
         generate_report(two_month_df, out, config)
         html = out.read_text(encoding="utf-8")
-        # "All" tab + 12 monthly tabs = 13 tab buttons
-        assert html.count("tab-btn") >= 13
+        # "All" tab + 2 monthly tabs (only months with data) = 3 tab buttons
+        assert html.count("data-tab=") == 3
 
     def test_html_contains_tab_content_divs(self, two_month_df, config, tmp_path):
         out = tmp_path / "report.html"
@@ -130,8 +130,8 @@ class TestGenerateReport:
         assert "savings_rate" in tab.benchmarks
         assert "needs_pct" in tab.benchmarks
 
-    def test_empty_month_shows_no_data_message(self, config, tmp_path):
-        # Only January data — other monthly tabs should show "No transactions"
+    def test_only_months_with_data_get_tabs(self, config, tmp_path):
+        # Only January data — should only generate 1 monthly tab + All
         df = pd.DataFrame({
             "date": pd.to_datetime(["2025-01-05", "2025-01-15"]),
             "merchant": ["Employer", "REWE"],
@@ -142,4 +142,6 @@ class TestGenerateReport:
         out = tmp_path / "report.html"
         generate_report(df, out, config)
         html = out.read_text(encoding="utf-8")
-        assert "No transactions found for this period" in html
+        assert html.count("data-tab=") == 2  # 1 month + All
+        assert 'id="tab-m-2025-01"' in html
+        assert 'id="tab-all"' in html

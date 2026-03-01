@@ -178,16 +178,11 @@ def generate_report(
     # Monthly tabs first (most recent first), "All Transactions" last
     tabs: list[TabData] = []
 
-    latest = df["date"].max()
-    for i in range(12):
-        month = latest.month - i
-        year = latest.year
-        while month <= 0:
-            month += 12
-            year -= 1
-        label = f"{year}-{month:02d}"
-        tab_id = f"m-{year}-{month:02d}"
-        month_df = _filter_to_month(df, year, month)
+    periods = df["date"].dt.to_period("M").drop_duplicates().sort_values(ascending=False)
+    for period in periods:
+        label = str(period)
+        tab_id = f"m-{period}"
+        month_df = _filter_to_month(df, period.year, period.month)
         tabs.append(
             _build_tab_data(month_df, config, colors, label, tab_id),
         )

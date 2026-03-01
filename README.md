@@ -55,6 +55,12 @@ visualise transactions.csv -o report.html -c categories.yaml -a "John Doe" --ope
 All charts are interactive (hover, zoom, legend toggle). The HTML file is
 fully self-contained — no network requests needed.
 
+## Example Report
+
+![Report preview](docs/report-preview.png)
+
+Generated from the included demo data: `visualise data/demo.csv`
+
 ## Customising Categories
 
 Copy the bundled config and edit it:
