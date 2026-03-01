@@ -4,7 +4,7 @@ A CLI tool that reads **ING Bank Germany** CSV transaction exports, categorises
 each transaction by keyword rules, and produces a **self-contained interactive
 HTML report** with four Plotly charts and a summary table.
 
-DISCLAIMER: This project served as a playfround for me to experiment with `claude code`.
+DISCLAIMER: This project served as a playground for me to experiment with `claude code`.
 
 ## Requirements
 
@@ -46,6 +46,7 @@ visualise transactions.csv -o report.html -c categories.yaml --open
 | **Monthly Spending by Category** | Stacked bar chart |
 | **Category Breakdown** | Donut chart |
 | **Monthly Net Savings** | Line chart |
+| **Financial Health** | Savings rate · housing ratio · investment rate · Engel's coefficient · 50/30/20 rule · expense trend |
 | **Uncategorised Transactions** | Collapsible table for keyword tuning |
 
 All charts are interactive (hover, zoom, legend toggle). The HTML file is
@@ -66,15 +67,41 @@ The tool searches both the *merchant* and *reference* columns. Categories higher
 in the file take priority when a transaction matches multiple categories.
 
 ```yaml
+# Filter out inter-account transfers (matched by merchant name, case-insensitive)
+own_accounts:
+  - "My Savings Account"
+  - "Shared Account"
+
 categories:
-  food:
+  housing:
+    color: "#a29bfe"
+    benchmark_group: housing   # used for housing cost ratio
+    budget_bucket: needs       # for 50/30/20 rule
+    keywords: [hausgeld, miete, nebenkosten]
+
+  groceries:
     color: "#e67e22"
-    keywords: [rewe, edeka, lidl, pizza, lieferando]
-  # … more categories …
+    benchmark_group: food      # used for Engel's coefficient
+    budget_bucket: needs
+    keywords: [rewe, edeka, lidl]
+
+  mortgage:
+    color: "#8e44ad"
+    type: investment           # counts toward investment rate, not housing
+    budget_bucket: savings
+    keywords: [tilgung, baufinanzierung]
+
   other:
     color: "#95a5a6"
     keywords: []   # catch-all fallback — always last
 ```
+
+Optional fields:
+
+- **`own_accounts`** — merchant names for inter-account transfers (excluded from all calculations).
+- **`benchmark_group`** — groups categories for Financial Health ratios (`housing` → housing cost ratio, `food` → Engel's coefficient).
+- **`type`** — `investment` vs default `consumption`; affects the investment rate calculation.
+- **`budget_bucket`** — `needs` / `wants` / `savings` for the 50/30/20 rule.
 
 ## Development
 
