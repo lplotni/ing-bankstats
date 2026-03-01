@@ -433,6 +433,7 @@
         <div class="stat-label">Net Savings</div>
         <div class="stat-value {{ 'green' if tab.stats.net >= 0 else 'red' }}">{{ tab.stats.net_fmt }}</div>
       </div>
+      {% if tab.stats.months_count > 1 %}
       <div class="stat-card">
         <div class="stat-label">Avg Monthly Income</div>
         <div class="stat-value">{{ tab.stats.avg_monthly_income_fmt }}</div>
@@ -449,6 +450,7 @@
         <div class="stat-label">Avg Monthly Investment</div>
         <div class="stat-value">{{ tab.stats.avg_monthly_investment_fmt }}</div>
       </div>
+      {% endif %}
       <div class="stat-card">
         <div class="stat-label">Uncategorised</div>
         <div class="stat-value dim">{{ tab.stats.uncategorised_count }}</div>
