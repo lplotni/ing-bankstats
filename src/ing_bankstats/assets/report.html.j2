@@ -172,11 +172,9 @@
     <h2 class="section-heading" id="{{ tab.tab_id }}-charts">Charts</h2>
     <div class="chart-full">{{ tab.chart_income_expenses|safe }}</div>
     <div class="chart-full">{{ tab.chart_spending_by_category|safe }}</div>
-
-    <div class="chart-row">
-      <div class="chart-half">{{ tab.chart_category_pie|safe }}</div>
-      <div class="chart-half">{{ tab.chart_savings|safe }}</div>
-    </div>
+    {% if tab.stats.months_count > 1 %}
+    <div class="chart-full">{{ tab.chart_savings|safe }}</div>
+    {% endif %}
 
     {% if tab.avg_expense_categories %}
     <div class="avg-section" id="{{ tab.tab_id }}-averages">

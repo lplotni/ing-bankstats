@@ -24,7 +24,6 @@ class TabData:
     stats: dict = field(default_factory=dict)
     chart_income_expenses: str = ""
     chart_spending_by_category: str = ""
-    chart_category_pie: str = ""
     chart_savings: str = ""
     other_transactions: list[dict] = field(default_factory=list)
     avg_expense_categories: list[dict] = field(default_factory=list)
@@ -67,16 +66,16 @@ def _build_tab_data(
     tab.chart_income_expenses = charts.income_vs_expenses_bar(result.monthly_summary)
 
     if not result.monthly_by_category.empty:
-        tab.chart_spending_by_category = charts.spending_by_category_bar(
-            result.monthly_by_category, colors,
-        )
+        if len(result.monthly_by_category) > 1:
+            tab.chart_spending_by_category = charts.spending_by_category_heatmap(
+                result.monthly_by_category,
+            )
+        else:
+            tab.chart_spending_by_category = charts.spending_by_category_bar(
+                result.monthly_by_category, colors,
+            )
     else:
         tab.chart_spending_by_category = "<p>No expense data available.</p>"
-
-    if not result.category_totals.empty:
-        tab.chart_category_pie = charts.category_pie(result.category_totals, colors)
-    else:
-        tab.chart_category_pie = "<p>No expense data available.</p>"
 
     tab.chart_savings = charts.savings_line(result.monthly_summary)
 

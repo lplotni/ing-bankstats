@@ -51,60 +51,75 @@ def income_vs_expenses_bar(monthly_summary: pd.DataFrame) -> str:
     return fig.to_html(**_TO_HTML_KWARGS)
 
 
-def spending_by_category_bar(
+def spending_by_category_heatmap(
     monthly_by_category: pd.DataFrame,
-    colors: dict[str, str] | None = None,
 ) -> str:
-    """Stacked bar chart of monthly spending broken down by category."""
-    colors = colors or {}
+    """Heatmap of monthly spending by category."""
     months = _months_str(monthly_by_category.index)
+    categories = [c.capitalize() for c in monthly_by_category.columns]
+    values = monthly_by_category.values.T  # categories × months
 
-    traces = []
-    for cat in monthly_by_category.columns:
-        traces.append(
-            go.Bar(
-                x=months,
-                y=monthly_by_category[cat],
-                name=cat.capitalize(),
-                marker_color=colors.get(cat, "#95a5a6"),
-            )
+    # Build hover text with euro formatting
+    hover = []
+    for i, cat in enumerate(categories):
+        row = []
+        for j, month in enumerate(months):
+            row.append(f"{cat}<br>{month}<br>€{values[i][j]:,.2f}")
+        hover.append(row)
+
+    fig = go.Figure(
+        go.Heatmap(
+            z=values,
+            x=months,
+            y=categories,
+            colorscale=[
+                [0, "rgba(74,158,255,0)"],
+                [0.25, "rgba(74,158,255,0.25)"],
+                [0.5, "rgba(74,158,255,0.5)"],
+                [0.75, "rgba(74,158,255,0.75)"],
+                [1, "rgba(74,158,255,1)"],
+            ],
+            hovertext=hover,
+            hovertemplate="%{hovertext}<extra></extra>",
+            colorbar=dict(
+                title="EUR",
+                tickformat=",",
+            ),
         )
-
-    fig = go.Figure(traces)
+    )
     fig.update_layout(
-        **_LAYOUT_DEFAULTS,
+        **{**_LAYOUT_DEFAULTS, "margin": dict(l=120, r=20, t=50, b=40)},
         title="Monthly Spending by Category",
-        barmode="stack",
-        xaxis_title="Month",
-        yaxis_title="Amount (EUR)",
-        legend=dict(orientation="h", y=-0.2, traceorder="normal"),
+        yaxis=dict(autorange="reversed"),
     )
     return fig.to_html(**_TO_HTML_KWARGS)
 
 
-def category_pie(
-    category_totals: pd.Series,
+def spending_by_category_bar(
+    monthly_by_category: pd.DataFrame,
     colors: dict[str, str] | None = None,
 ) -> str:
-    """Donut chart of total expense breakdown by category."""
+    """Horizontal bar chart of spending by category for a single month."""
     colors = colors or {}
-    cats = category_totals.index.tolist()
-    marker_colors = [colors.get(c, "#95a5a6") for c in cats]
+    # Sum across months (typically just one) and sort ascending so largest is at top
+    totals = monthly_by_category.sum().sort_values(ascending=True)
+    categories = [c.capitalize() for c in totals.index]
+    bar_colors = [colors.get(c, "#95a5a6") for c in totals.index]
 
     fig = go.Figure(
-        go.Pie(
-            labels=[c.capitalize() for c in cats],
-            values=category_totals.values,
-            hole=0.45,
-            marker=dict(colors=marker_colors),
-            textinfo="label+percent",
-            hovertemplate="%{label}<br>€%{value:,.2f}<br>%{percent}<extra></extra>",
+        go.Bar(
+            x=totals.values,
+            y=categories,
+            orientation="h",
+            marker_color=bar_colors,
+            hovertemplate="%{y}<br>€%{x:,.2f}<extra></extra>",
         )
     )
     fig.update_layout(
         **_LAYOUT_DEFAULTS,
         title="Spending by Category",
-        showlegend=False,
+        xaxis_title="Amount (EUR)",
+        yaxis=dict(tickmode="linear"),
     )
     return fig.to_html(**_TO_HTML_KWARGS)
 
