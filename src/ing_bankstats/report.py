@@ -178,14 +178,32 @@ def generate_report(
     # Monthly tabs first (most recent first), "All Transactions" last
     tabs: list[TabData] = []
 
-    periods = df["date"].dt.to_period("M").drop_duplicates().sort_values(ascending=False)
-    for period in periods:
+    all_periods = df["date"].dt.to_period("M").drop_duplicates().sort_values(ascending=False)
+    tab_periods = all_periods[:12]
+    for i, period in enumerate(tab_periods):
         label = str(period)
         tab_id = f"m-{period}"
         month_df = _filter_to_month(df, period.year, period.month)
-        tabs.append(
-            _build_tab_data(month_df, config, colors, label, tab_id),
-        )
+        tab = _build_tab_data(month_df, config, colors, label, tab_id)
+
+        # Month-over-month deltas — find the next period in the full list
+        # (next = previous chronologically, since sorted descending)
+        period_idx = all_periods.tolist().index(period)
+        if period_idx + 1 < len(all_periods):
+            prev_period = all_periods.iloc[period_idx + 1]
+            prev_df = _filter_to_month(df, prev_period.year, prev_period.month)
+            if not prev_df.empty and tab.has_data:
+                prev_result = aggregator.aggregate(prev_df, config)
+                prev = prev_result.stats
+                cur = tab.stats
+                if prev["total_income"] > 0:
+                    cur["delta_income"] = (cur["total_income"] - prev["total_income"]) / prev["total_income"] * 100
+                if prev["total_expenses"] > 0:
+                    cur["delta_expenses"] = (cur["total_expenses"] - prev["total_expenses"]) / prev["total_expenses"] * 100
+                cur["delta_net_abs"] = cur["net"] - prev["net"]
+                cur["delta_net_abs_fmt"] = _fmt_eur(cur["delta_net_abs"])
+
+        tabs.append(tab)
 
     tabs.append(
         _build_tab_data(df, config, colors, "All Transactions", "all"),

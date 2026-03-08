@@ -498,6 +498,7 @@ def _avg_to_rows(
     if avg_df.empty or "category" not in avg_df.columns:
         return [], []
     year_cols = sorted(c for c in avg_df.columns if isinstance(c, int))
+    total_overall = float(avg_df["overall"].sum()) if "overall" in avg_df.columns else 0
     rows = []
     for _, r in avg_df.iterrows():
         row: dict = {
@@ -507,6 +508,10 @@ def _avg_to_rows(
         for y in year_cols:
             row[str(y)] = _fmt_eur(r[y])
         row["overall"] = _fmt_eur(r["overall"])
+        if total_overall > 0:
+            row["pct"] = f"{r['overall'] / total_overall * 100:.1f}%"
+        else:
+            row["pct"] = ""
         rows.append(row)
     return rows, year_cols
 
@@ -529,12 +534,16 @@ def prepare_avg_table_rows(
     consumption_rows = [r for r in avg_expense_rows if cat_types.get(r["category"], "consumption") == "consumption"]
     investment_rows = [r for r in avg_expense_rows if cat_types.get(r["category"], "consumption") == "investment"]
 
+    total_overall = float(avg_expenses["overall"].sum()) if not avg_expenses.empty and "overall" in avg_expenses.columns else 0
+
     def _subtotal_row(label: str, categories: list[str]) -> dict:
         subset = avg_expenses[avg_expenses["category"].isin(categories)]
         row: dict = {"category": label, "color": "", "is_subtotal": True}
         for y in avg_years:
             row[str(y)] = _fmt_eur(float(subset[y].sum())) if y in subset.columns else _fmt_eur(0)
-        row["overall"] = _fmt_eur(float(subset["overall"].sum())) if not subset.empty else _fmt_eur(0)
+        subtotal = float(subset["overall"].sum()) if not subset.empty else 0
+        row["overall"] = _fmt_eur(subtotal)
+        row["pct"] = f"{subtotal / total_overall * 100:.1f}%" if total_overall > 0 else ""
         return row
 
     grouped_expense_rows: list[dict] = []

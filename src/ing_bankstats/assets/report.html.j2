@@ -16,6 +16,7 @@
   <!-- Tab bar -->
   <div class="tab-bar">
     {% for tab in tabs %}
+    {% if loop.last %}<div class="tab-sep"></div>{% endif %}
     <button class="tab-btn{% if loop.first %} active{% endif %}"
             onclick="switchTab('{{ tab.tab_id }}')"
             data-tab="{{ tab.tab_id }}">{{ tab.label }}</button>
@@ -35,20 +36,54 @@
       &nbsp;·&nbsp; {{ tab.stats.transaction_count }} transactions
     </p>
 
+    <!-- Jump links -->
+    <nav class="jump-nav" id="nav-{{ tab.tab_id }}">
+      <a href="#{{ tab.tab_id }}-stats" onclick="jumpTo(event,'{{ tab.tab_id }}-stats')">Stats</a>
+      {% if tab.benchmarks %}<a href="#{{ tab.tab_id }}-health" onclick="jumpTo(event,'{{ tab.tab_id }}-health')">Health</a>{% endif %}
+      <a href="#{{ tab.tab_id }}-charts" onclick="jumpTo(event,'{{ tab.tab_id }}-charts')">Charts</a>
+      {% if tab.avg_expense_categories %}<a href="#{{ tab.tab_id }}-averages" onclick="jumpTo(event,'{{ tab.tab_id }}-averages')">Averages</a>{% endif %}
+      {% if tab.other_transactions or tab.category_transactions %}<a href="#{{ tab.tab_id }}-transactions" onclick="jumpTo(event,'{{ tab.tab_id }}-transactions')">Transactions</a>{% endif %}
+    </nav>
+
+    <div id="{{ tab.tab_id }}-stats">
+    <h2 class="section-heading">Totals</h2>
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-label">Total Income</div>
         <div class="stat-value green">{{ tab.stats.total_income_fmt }}</div>
+        {% if tab.stats.delta_income is defined and tab.stats.delta_income is not none %}
+        <div class="stat-delta {{ 'delta-pos' if tab.stats.delta_income >= 0 else 'delta-neg' }}">
+          {{ '+' if tab.stats.delta_income >= 0 }}{{ "%.1f"|format(tab.stats.delta_income) }}% vs prev
+        </div>
+        {% endif %}
       </div>
       <div class="stat-card">
         <div class="stat-label">Total Expenses</div>
         <div class="stat-value red">{{ tab.stats.total_expenses_fmt }}</div>
+        {% if tab.stats.delta_expenses is defined and tab.stats.delta_expenses is not none %}
+        <div class="stat-delta {{ 'delta-neg' if tab.stats.delta_expenses > 0 else 'delta-pos' }}">
+          {{ '+' if tab.stats.delta_expenses >= 0 }}{{ "%.1f"|format(tab.stats.delta_expenses) }}% vs prev
+        </div>
+        {% endif %}
       </div>
       <div class="stat-card">
         <div class="stat-label">Net Savings</div>
         <div class="stat-value {{ 'green' if tab.stats.net >= 0 else 'red' }}">{{ tab.stats.net_fmt }}</div>
+        {% if tab.stats.delta_net_abs is defined and tab.stats.delta_net_abs is not none %}
+        <div class="stat-delta {{ 'delta-pos' if tab.stats.delta_net_abs >= 0 else 'delta-neg' }}">
+          {{ '+' if tab.stats.delta_net_abs >= 0 }}{{ tab.stats.delta_net_abs_fmt }} vs prev
+        </div>
+        {% endif %}
       </div>
-      {% if tab.stats.months_count > 1 %}
+      <div class="stat-card">
+        <div class="stat-label">Uncategorised</div>
+        <div class="stat-value dim">{{ tab.stats.uncategorised_count }}</div>
+      </div>
+    </div>
+
+    {% if tab.stats.months_count > 1 %}
+    <h2 class="section-heading">Monthly Averages</h2>
+    <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-label">Avg Monthly Income</div>
         <div class="stat-value">{{ tab.stats.avg_monthly_income_fmt }}</div>
@@ -65,11 +100,8 @@
         <div class="stat-label">Avg Monthly Investment</div>
         <div class="stat-value">{{ tab.stats.avg_monthly_investment_fmt }}</div>
       </div>
-      {% endif %}
-      <div class="stat-card">
-        <div class="stat-label">Uncategorised</div>
-        <div class="stat-value dim">{{ tab.stats.uncategorised_count }}</div>
-      </div>
+    </div>
+    {% endif %}
     </div>
 
     {% if tab.benchmarks %}
@@ -89,7 +121,7 @@
       'engel': "Engel's Coefficient",
       'expense_trend': 'Expense Trend'
     } %}
-    <div class="fh-section">
+    <div class="fh-section" id="{{ tab.tab_id }}-health">
       <h2>Financial Health</h2>
       <div class="fh-grid">
         {% for key in ['savings_rate', 'housing_ratio', 'investment_rate', 'engel', 'expense_trend'] %}
@@ -137,6 +169,7 @@
     </div>
     {% endif %}
 
+    <h2 class="section-heading" id="{{ tab.tab_id }}-charts">Charts</h2>
     <div class="chart-full">{{ tab.chart_income_expenses|safe }}</div>
     <div class="chart-full">{{ tab.chart_spending_by_category|safe }}</div>
 
@@ -146,7 +179,7 @@
     </div>
 
     {% if tab.avg_expense_categories %}
-    <div class="avg-section">
+    <div class="avg-section" id="{{ tab.tab_id }}-averages">
       <h2>Average Monthly Expenses by Category</h2>
       <table>
         <thead>
@@ -154,6 +187,7 @@
             <th>Category</th>
             {% for y in tab.avg_years %}<th class="amount">{{ y }}</th>{% endfor %}
             <th class="amount">Overall</th>
+            <th class="amount">%</th>
           </tr>
         </thead>
         <tbody>
@@ -162,6 +196,7 @@
             <td>{% if not row.is_subtotal %}<span class="cat-dot" style="background:{{ row.color }}"></span>{% endif %}{{ row.category }}</td>
             {% for y in tab.avg_years %}<td class="amount">{{ row[y] }}</td>{% endfor %}
             <td class="amount" style="font-weight:600">{{ row.overall }}</td>
+            <td class="pct">{{ row.pct }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -191,6 +226,10 @@
         </tbody>
       </table>
     </div>
+    {% endif %}
+
+    {% if tab.other_transactions or tab.category_transactions %}
+    <h2 class="section-heading" id="{{ tab.tab_id }}-transactions">Transactions</h2>
     {% endif %}
 
     {% if tab.other_transactions %}
@@ -229,11 +268,15 @@
     {% for cat in tab.category_transactions %}
     <details>
       <summary>
-        <span class="cat-dot" style="background:{{ cat.color }}"></span>
-        {{ cat.name|capitalize }} ({{ cat.count }})
-        &nbsp;·&nbsp;
-        <span class="{{ 'neg' if cat.total_negative else '' }}" style="font-variant-numeric:tabular-nums">
-          {% if cat.total_negative %}-{% endif %}{{ cat.total }}
+        <span class="cat-summary-line">
+          <span class="cat-summary-left">
+            <span class="cat-dot" style="background:{{ cat.color }}"></span>
+            {{ cat.name|capitalize }}
+            <span class="cat-count">({{ cat.count }})</span>
+          </span>
+          <span class="cat-summary-right {{ 'neg' if cat.total_negative else '' }}">
+            {% if cat.total_negative %}-{% endif %}{{ cat.total }}
+          </span>
         </span>
       </summary>
       <table>
@@ -276,6 +319,12 @@
       });
       // Fix Plotly chart sizing in newly-visible tabs
       window.dispatchEvent(new Event('resize'));
+    }
+
+    function jumpTo(event, id) {
+      event.preventDefault();
+      var el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   </script>
 
